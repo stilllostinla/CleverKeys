@@ -622,6 +622,20 @@ class KeyboardReceiver(
                 )
             }
 
+            // Phase 1 voice (2026-10-24): Slice C opens the builtin overlay
+            // here when voice_enabled && voice_mode == "builtin". Until then,
+            // always fall back to the external voice IME (today's behavior).
+            KeyValue.Event.VOICE_TRANSCRIBE -> {
+                if (!VoiceImeSwitcher.switch_to_voice_ime(
+                        keyboard2,
+                        subtypeManager.inputMethodManager,
+                        Config.globalPrefs()
+                    )
+                ) {
+                    keyboard2.getConfig()?.shouldOfferVoiceTyping = false
+                }
+            }
+
             else -> {} // Unhandled events
         }
     }
