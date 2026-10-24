@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.widget.*
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
@@ -25,6 +26,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import tribixbite.cleverkeys.theme.KeyboardTheme
+import tribixbite.cleverkeys.voice.VoicePermissionGate
 import tribixbite.cleverkeys.langpack.LanguagePackManifest
 import tribixbite.cleverkeys.ui.settings.SearchableSetting
 import tribixbite.cleverkeys.ui.settings.expanderFor
@@ -328,6 +330,22 @@ class SettingsActivity : ComponentActivity(), SharedPreferences.OnSharedPreferen
     internal var swipeTypingEnabled by mutableStateOf(true)  // Master switch for swipe typing (default ON for CleverKeys)
     internal var swipeOnPasswordFields by mutableStateOf(false)  // #39: Allow swipe on password fields
     internal var wordPredictionEnabled by mutableStateOf(true)  // Match Config.kt default
+    // Phase 1 voice (2026-10-24): UI row lands in Slice C; state wired now so load/save is consistent.
+    internal var voiceEnabled by mutableStateOf(false)
+    internal var voiceMode by mutableStateOf("external")
+    internal var voiceTone by mutableStateOf("raw")
+    // Phase 1 voice (2026-10-24): mic permission launcher. The settings row
+    // calling requestVoicePermission() lands in Slice C with the overlay.
+    private lateinit var voicePermissionLauncher: ActivityResultLauncher<String>
+    private var pendingVoicePermissionResult: ((Boolean) -> Unit)? = null
+
+    fun requestVoicePermission(onResult: (Boolean) -> Unit) {
+        pendingVoicePermissionResult = onResult
+        VoicePermissionGate.requestOrRun(this, voicePermissionLauncher) {
+            pendingVoicePermissionResult?.invoke(it)
+            pendingVoicePermissionResult = null
+        }
+    }
     internal var autoSpaceAfterSuggestion by mutableStateOf(true)  // #82: Add trailing space after selecting suggestion
     internal var autoSpaceBeforeSuggestion by mutableStateOf(true)  // Add leading space before tapped suggestion
     internal var showExactTypedWord by mutableStateOf(Defaults.SHOW_EXACT_TYPED_WORD)  // F-8 / #42: exact-typed-word suggestion
@@ -736,6 +754,11 @@ class SettingsActivity : ComponentActivity(), SharedPreferences.OnSharedPreferen
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Phase 1 voice (2026-10-24): must register before STARTED.
+        voicePermissionLauncher = VoicePermissionGate.launcherFor(this) {
+            pendingVoicePermissionResult?.invoke(it)
+            pendingVoicePermissionResult = null
+        }
 
         // Edge-to-edge setup for consistent dark theme appearance
         window?.let { w ->

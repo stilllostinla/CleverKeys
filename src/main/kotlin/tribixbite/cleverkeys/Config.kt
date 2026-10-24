@@ -358,6 +358,12 @@ object Defaults {
     const val BACKSPACE_UNDO_SWIPE = true  // Backspace after swipe deletes entire swiped word
     const val BACKSPACE_UNDO_AUTOCORRECT = true  // #110: Backspace after autocorrect reverts to original word
 
+    // Phase 1 voice (2026-10-24): offline-only mic button. voice_mode is
+    // "external" (today's IME-hop behavior) or "builtin" (on-device capture).
+    const val VOICE_ENABLED = false
+    const val VOICE_MODE = "external"
+    const val VOICE_TONE = "raw"
+
     // Privacy
     const val PRIVACY_COLLECT_SWIPE = false
     const val PRIVACY_COLLECT_PERFORMANCE = false
@@ -822,6 +828,10 @@ class Config private constructor(
 
     // Dynamically set
     @JvmField var shouldOfferVoiceTyping = false
+    // Phase 1 voice (2026-10-24): user prefs, loaded in refresh() below.
+    @JvmField var voice_enabled = Defaults.VOICE_ENABLED
+    @JvmField var voice_mode: String = Defaults.VOICE_MODE
+    @JvmField var voice_tone: String = Defaults.VOICE_TONE
     @JvmField var actionLabel: String? = null
     @JvmField var actionId = 0
     @JvmField var swapEnterActionKey = false
@@ -1032,6 +1042,10 @@ class Config private constructor(
         suggestion_provenance_markers = _prefs.getBoolean("suggestion_provenance_markers", Defaults.SUGGESTION_PROVENANCE_MARKERS)
         show_exact_typed_word = _prefs.getBoolean("show_exact_typed_word", Defaults.SHOW_EXACT_TYPED_WORD)
         word_prediction_enabled = _prefs.getBoolean("word_prediction_enabled", Defaults.WORD_PREDICTION_ENABLED)
+        // Phase 1 voice (2026-10-24)
+        voice_enabled = _prefs.getBoolean("voice_enabled", Defaults.VOICE_ENABLED)
+        voice_mode = _prefs.getString("voice_mode", Defaults.VOICE_MODE) ?: Defaults.VOICE_MODE
+        voice_tone = _prefs.getString("voice_tone", Defaults.VOICE_TONE) ?: Defaults.VOICE_TONE
         suggestion_bar_opacity = safeGetInt(_prefs, "suggestion_bar_opacity", Defaults.SUGGESTION_BAR_OPACITY)
 
         prediction_context_boost = safeGetFloat(_prefs, "prediction_context_boost", Defaults.PREDICTION_CONTEXT_BOOST)

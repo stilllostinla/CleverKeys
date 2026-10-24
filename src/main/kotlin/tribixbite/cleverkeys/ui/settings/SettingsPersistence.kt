@@ -161,6 +161,16 @@ internal fun SettingsActivity.handlePreferenceChanged(sharedPreferences: SharedP
             "word_prediction_enabled" -> {
                 wordPredictionEnabled = prefs.getBoolean(key, Defaults.WORD_PREDICTION_ENABLED)
             }
+            // Phase 1 voice (2026-10-24)
+            "voice_enabled" -> {
+                voiceEnabled = prefs.getBoolean(key, Defaults.VOICE_ENABLED)
+            }
+            "voice_mode" -> {
+                voiceMode = prefs.getString(key, Defaults.VOICE_MODE) ?: Defaults.VOICE_MODE
+            }
+            "voice_tone" -> {
+                voiceTone = prefs.getString(key, Defaults.VOICE_TONE) ?: Defaults.VOICE_TONE
+            }
             "suggestion_bar_opacity" -> {
                 suggestionBarOpacity = Config.safeGetInt(prefs, key, Defaults.SUGGESTION_BAR_OPACITY)
             }
@@ -343,6 +353,10 @@ internal fun SettingsActivity.loadCurrentSettings() {
         autoSpaceAfterSuggestion = prefs.getSafeBoolean("auto_space_after_suggestion", Defaults.AUTO_SPACE_AFTER_SUGGESTION)
         autoSpaceBeforeSuggestion = prefs.getSafeBoolean("auto_space_before_suggestion", Defaults.AUTO_SPACE_BEFORE_SUGGESTION)
         showExactTypedWord = prefs.getSafeBoolean("show_exact_typed_word", Defaults.SHOW_EXACT_TYPED_WORD)
+        // Phase 1 voice (2026-10-24)
+        voiceEnabled = prefs.getSafeBoolean("voice_enabled", Defaults.VOICE_ENABLED)
+        voiceMode = prefs.getSafeString("voice_mode", Defaults.VOICE_MODE)
+        voiceTone = prefs.getSafeString("voice_tone", Defaults.VOICE_TONE)
         backspaceUndoSwipe = prefs.getSafeBoolean("backspace_undo_swipe", Defaults.BACKSPACE_UNDO_SWIPE)
         backspaceUndoAutocorrect = prefs.getSafeBoolean("backspace_undo_autocorrect", Defaults.BACKSPACE_UNDO_AUTOCORRECT)
         suggestionBarOpacity = Config.safeGetInt(prefs, "suggestion_bar_opacity", Defaults.SUGGESTION_BAR_OPACITY)
