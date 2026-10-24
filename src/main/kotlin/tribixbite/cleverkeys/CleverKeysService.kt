@@ -1205,6 +1205,21 @@ class CleverKeysService : InputMethodService(),
         _suggestionBar?.showTemporaryMessage(message, durationMs)
     }
 
+    /**
+     * Phase 1 voice (Slice C.4): confirm an inserted voice transcript with
+     * two-tap undo. Falls back to a plain message when the bar is absent.
+     */
+    fun showVoiceInsertUndo(preview: String, insertedLength: Int) {
+        val bar = _suggestionBar
+        if (bar == null) {
+            showSuggestionBarMessage(preview)
+            return
+        }
+        bar.showUndoableMessage(preview, getString(R.string.suggestion_tap_again_to_undo)) {
+            currentInputConnection?.deleteSurroundingText(insertedLength, 0)
+        }
+    }
+
     // Check if default IME, show notification if not (v1.32.377: Delegated to IMEStatusHelper)
     private fun checkAndPromptDefaultIME() {
         val prefs = DirectBootAwarePreferences.get_shared_preferences(this)

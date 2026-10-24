@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Phase 1 voice (Slice C): offline voice pane. Hosted in contentPaneContainer
+     like emoji_pane (keyboard stays visible below). All colors are theme attrs. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:hardwareAccelerated="false">
+
+  <!-- Header: title + close -->
+  <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="40dp"
+      android:orientation="horizontal"
+      android:gravity="center_vertical"
+      android:paddingStart="8dp"
+      android:paddingEnd="4dp"
+      android:background="?attr/colorKey">
+
+    <TextView
+        android:id="@+id/voice_status"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="@string/voice_title"
+        android:textSize="14sp"
+        android:textColor="?attr/colorLabel" />
+
+    <ImageButton
+        android:id="@+id/voice_close"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:contentDescription="@string/voice_close"
+        android:background="@android:color/transparent" />
+  </LinearLayout>
+
+  <!-- Live mic level -->
+  <ProgressBar
+      android:id="@+id/voice_level"
+      style="?android:attr/progressBarStyleHorizontal"
+      android:layout_width="match_parent"
+      android:layout_height="8dp"
+      android:max="100"
+      android:progress="0"
+      android:paddingStart="8dp"
+      android:paddingEnd="8dp" />
+
+  <!-- Transcript preview -->
+  <TextView
+      android:id="@+id/voice_transcript"
+      android:layout_width="match_parent"
+      android:layout_height="0dp"
+      android:layout_weight="1"
+      android:padding="12dp"
+      android:textSize="16sp"
+      android:textColor="?attr/colorLabel"
+      android:background="?attr/colorKey" />
+
+  <!-- Tone chips (Phase 1: RAW + CLEAN; LLM tones arrive with Phase 2) -->
+  <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:orientation="horizontal"
+      android:gravity="center"
+      android:padding="4dp"
+      android:background="?attr/colorKey">
+
+    <Button
+        android:id="@+id/voice_tone_raw"
+        android:layout_width="wrap_content"
+        android:layout_height="36dp"
+        android:text="@string/voice_tone_raw" />
+
+    <Button
+        android:id="@+id/voice_tone_clean"
+        android:layout_width="wrap_content"
+        android:layout_height="36dp"
+        android:text="@string/voice_tone_clean" />
+  </LinearLayout>
+
+  <!-- Actions -->
+  <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:orientation="horizontal"
+      android:gravity="end"
+      android:padding="4dp"
+      android:background="?attr/colorKey">
+
+    <Button
+        android:id="@+id/voice_cancel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/voice_cancel" />
+
+    <Button
+        android:id="@+id/voice_done"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/voice_done" />
+  </LinearLayout>
+</LinearLayout>

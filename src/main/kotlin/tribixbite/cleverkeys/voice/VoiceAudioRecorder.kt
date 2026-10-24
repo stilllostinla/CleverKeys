@@ -36,7 +36,7 @@ internal class VoiceAudioRecorder(
     private val sourceFactory: (sampleRate: Int, bufferFrames: Int) -> PcmSource = ::AudioRecordSource,
     private val clockMs: () -> Long = SystemClock::elapsedRealtime,
     private val io: CoroutineDispatcher = Dispatchers.IO,
-) {
+) : VoiceCapture {
     /** Minimal seam over [AudioRecord] for JVM tests. */
     internal interface PcmSource {
         /** Buffer size in frames the source wants per read. */
@@ -61,7 +61,7 @@ internal class VoiceAudioRecorder(
      * Start capturing. No-op when already recording. [onAmplitude] receives
      * 0..1 levels from the recording thread; the overlay posts them to main.
      */
-    suspend fun start(onAmplitude: ((Float) -> Unit)? = null) {
+    override suspend fun start(onAmplitude: ((Float) -> Unit)? = null) {
         var source: PcmSource? = null
         var file: File? = null
         lock.withLock {
@@ -78,7 +78,7 @@ internal class VoiceAudioRecorder(
     }
 
     /** Stop capturing and return the PCM file, or null when not recording. */
-    suspend fun stop(): File? = withContext(io) {
+    override suspend fun stop(): File? = withContext(io) {
         val j: Job?
         val f: File?
         lock.withLock {
@@ -99,7 +99,7 @@ internal class VoiceAudioRecorder(
     }
 
     /** Stop capturing and delete the partial file. */
-    suspend fun cancel() {
+    override suspend fun cancel() {
         val f = stop()
         withContext(io) {
             if (f != null && f.exists()) f.delete()

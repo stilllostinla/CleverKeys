@@ -338,6 +338,20 @@
     <!-- %1$s = the search query with no matching emoji -->
     <string name="emoji_no_results_query">No emoji found for \"%1$s\"</string>
     <string name="gif_search_hint">Search GIFs…</string>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         Voice input pane (voice_pane) — Phase 1 offline
+         ══════════════════════════════════════════════════════════════════ -->
+    <string name="voice_title">Voice input</string>
+    <string name="voice_close">Close voice input</string>
+    <string name="voice_listening">Listening… tap Done when finished</string>
+    <string name="voice_transcribing">Transcribing…</string>
+    <string name="voice_tone_raw">Raw</string>
+    <string name="voice_tone_clean">Clean up</string>
+    <string name="voice_cancel">Cancel</string>
+    <string name="voice_done">Done</string>
+    <string name="voice_inserted">Inserted voice text</string>
+    <string name="voice_mic_denied">Microphone unavailable — using external voice typing</string>
     <string name="gif_close">Close GIF picker</string>
     <string name="gif_no_results">No GIFs found</string>
 

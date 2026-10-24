@@ -20,7 +20,14 @@ import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.PopupWindow
+import android.widget.ProgressBar
 import android.widget.TextView
+import tribixbite.cleverkeys.voice.StubTranscriber
+import tribixbite.cleverkeys.voice.ToneRewriter
+import tribixbite.cleverkeys.voice.VoiceAudioRecorder
+import tribixbite.cleverkeys.voice.VoicePermissionGate
+import tribixbite.cleverkeys.voice.VoiceSession
+import tribixbite.cleverkeys.voice.VoiceState
 import androidx.core.view.ViewCompat
 import tribixbite.cleverkeys.gif.Gif
 import tribixbite.cleverkeys.gif.GifAssetManager
@@ -77,6 +84,10 @@ class KeyboardReceiver(
 
     // View references
     private var emojiPane: ViewGroup? = null
+    // Phase 1 voice (Slice C): builtin voice pane + recording session.
+    private var voicePane: ViewGroup? = null
+    private var voiceSession: VoiceSession? = null
+    private var voiceToneUi: ToneRewriter.Tone = ToneRewriter.Tone.CLEAN
     private var contentPaneContainer: android.widget.FrameLayout? = null
     private var topPane: android.widget.FrameLayout? = null
     private var scrollView: android.widget.HorizontalScrollView? = null
@@ -89,7 +100,144 @@ class KeyboardReceiver(
     // Track which pane is currently visible for toggle behavior
     private var currentPaneType: PaneType = PaneType.NONE
 
-    private enum class PaneType { NONE, EMOJI, CLIPBOARD, GIF }
+    // ── Phase 1 voice pane (Slice C.3/C.4) ──────────────────────────────
+    // Mirrors the emoji-pane hosting pattern: inflate fresh into
+    // contentPaneContainer, keyboard stays visible below. gh #148 applies:
+    // never setInputView(pane).
+
+    private fun fallbackToVoiceIme() {
+        if (!VoiceImeSwitcher.switch_to_voice_ime(
+                keyboard2,
+                subtypeManager.inputMethodManager,
+                Config.globalPrefs()
+            )
+        ) {
+            keyboard2.getConfig()?.shouldOfferVoiceTyping = false
+        }
+    }
+
+    private fun openVoicePane() {
+        if (currentPaneType == PaneType.VOICE && isContentPaneShowing) return
+        val container = contentPaneContainer ?: run {
+            android.util.Log.e(TAG, "VOICE_TRANSCRIBE with no contentPaneContainer — refusing (gh #148)")
+            fallbackToVoiceIme()
+            return
+        }
+        closeCurrentPaneRoutingState()
+        val pane = keyboard2.inflate_view(R.layout.voice_pane) as ViewGroup
+        (pane.parent as? ViewGroup)?.removeView(pane)
+        voicePane = pane
+        container.removeAllViews()
+        pane.layoutParams = paneLayoutParams(contentPaneHeight)
+        container.addView(pane)
+        currentPaneType = PaneType.VOICE
+        showContentPane()
+        val cfg = keyboard2.getConfig()
+        voiceToneUi = ToneRewriter.parseTone(cfg?.voice_tone)
+        markVoiceToneChips(pane)
+        val session = VoiceSession(
+            captureFactory = { dir -> VoiceAudioRecorder(dir) },
+            // Slice D swaps in OnnxWhisperTranscriber when a model is present.
+            transcriber = StubTranscriber(),
+            tone = { voiceToneUi },
+        )
+        voiceSession = session
+        wireVoicePane(pane, session)
+        setVoiceStatus(pane, keyboard2.getString(R.string.voice_listening))
+        session.startRecording(
+            cacheDir = keyboard2.cacheDir,
+            onState = { state -> handler.post { onVoiceState(pane, state) } },
+            onLevel = { level -> handler.post { updateVoiceLevel(pane, level) } },
+        )
+    }
+
+    private fun wireVoicePane(pane: ViewGroup, session: VoiceSession) {
+        pane.findViewById<View>(R.id.voice_close)?.setOnClickListener { cancelVoicePane() }
+        pane.findViewById<View>(R.id.voice_cancel)?.setOnClickListener { cancelVoicePane() }
+        pane.findViewById<View>(R.id.voice_done)?.setOnClickListener {
+            setVoiceStatus(pane, keyboard2.getString(R.string.voice_transcribing))
+            session.finishRecording { state -> handler.post { onVoiceState(pane, state) } }
+        }
+        pane.findViewById<View>(R.id.voice_tone_raw)?.setOnClickListener {
+            voiceToneUi = ToneRewriter.Tone.RAW
+            markVoiceToneChips(pane)
+        }
+        pane.findViewById<View>(R.id.voice_tone_clean)?.setOnClickListener {
+            voiceToneUi = ToneRewriter.Tone.CLEAN
+            markVoiceToneChips(pane)
+        }
+    }
+
+    private fun markVoiceToneChips(pane: ViewGroup) {
+        pane.findViewById<View>(R.id.voice_tone_raw)?.isSelected =
+            voiceToneUi == ToneRewriter.Tone.RAW
+        pane.findViewById<View>(R.id.voice_tone_clean)?.isSelected =
+            voiceToneUi == ToneRewriter.Tone.CLEAN
+    }
+
+    private fun setVoiceStatus(pane: ViewGroup, text: String) {
+        pane.findViewById<TextView>(R.id.voice_status)?.text = text
+    }
+
+    private fun updateVoiceLevel(pane: ViewGroup, level: Float) {
+        pane.findViewById<ProgressBar>(R.id.voice_level)?.progress =
+            (level * 100).toInt().coerceIn(0, 100)
+    }
+
+    private fun showVoiceTranscript(pane: ViewGroup, text: String) {
+        pane.findViewById<TextView>(R.id.voice_transcript)?.text = text
+    }
+
+    private fun onVoiceState(pane: ViewGroup, state: VoiceState) {
+        when (state) {
+            is VoiceState.Recording ->
+                setVoiceStatus(pane, keyboard2.getString(R.string.voice_listening))
+            VoiceState.Transcribing ->
+                setVoiceStatus(pane, keyboard2.getString(R.string.voice_transcribing))
+            is VoiceState.Ready -> {
+                showVoiceTranscript(pane, state.text)
+                insertVoiceText(state.text)
+                closeVoicePane()
+            }
+            is VoiceState.Error -> setVoiceStatus(pane, state.message)
+            VoiceState.Idle -> {}
+        }
+    }
+
+    private fun insertVoiceText(text: String) {
+        if (text.isEmpty()) return
+        keyboard2.currentInputConnection?.commitText(text, 1)
+        keyboard2.showVoiceInsertUndo(
+            keyboard2.getString(R.string.voice_inserted),
+            text.length
+        )
+    }
+
+    private fun cancelVoicePane() {
+        cancelVoiceSession()
+        if (currentPaneType == PaneType.VOICE) {
+            currentPaneType = PaneType.NONE
+            hideContentPane()
+        }
+    }
+
+    private fun closeVoicePane() {
+        voiceSession = null
+        voicePane = null
+        if (currentPaneType == PaneType.VOICE) {
+            currentPaneType = PaneType.NONE
+            hideContentPane()
+        }
+    }
+
+    /** Release the mic when the keyboard hides (via resetContentPaneState). */
+    private fun cancelVoiceSession() {
+        voiceSession?.cancel()
+        voiceSession = null
+        voicePane = null
+    }
+
+    private enum class PaneType { NONE, EMOJI, CLIPBOARD, GIF, VOICE }
 
     // #41: Emoji search manager (uses suggestion bar for status display)
     private var emojiSearchManager: EmojiSearchManager? = null
@@ -176,6 +324,8 @@ class KeyboardReceiver(
 
         // Always reset pane type to prevent toggle issues
         currentPaneType = PaneType.NONE
+        // Phase 1 voice: release the mic when the keyboard hides.
+        cancelVoiceSession()
         closeCurrentPaneRoutingState()
     }
 
@@ -604,14 +754,7 @@ class KeyboardReceiver(
             }
 
             KeyValue.Event.SWITCH_VOICE_TYPING -> {
-                if (!VoiceImeSwitcher.switch_to_voice_ime(
-                        keyboard2,
-                        subtypeManager.inputMethodManager,
-                        Config.globalPrefs()
-                    )
-                ) {
-                    keyboard2.getConfig()?.shouldOfferVoiceTyping = false
-                }
+                fallbackToVoiceIme()
             }
 
             KeyValue.Event.SWITCH_VOICE_TYPING_CHOOSER -> {
@@ -622,17 +765,21 @@ class KeyboardReceiver(
                 )
             }
 
-            // Phase 1 voice (2026-10-24): Slice C opens the builtin overlay
-            // here when voice_enabled && voice_mode == "builtin". Until then,
-            // always fall back to the external voice IME (today's behavior).
+            // Phase 1 voice (Slice C): builtin pane when opted in + permitted,
+            // external IME hop otherwise (today's behavior).
             KeyValue.Event.VOICE_TRANSCRIBE -> {
-                if (!VoiceImeSwitcher.switch_to_voice_ime(
-                        keyboard2,
-                        subtypeManager.inputMethodManager,
-                        Config.globalPrefs()
-                    )
-                ) {
-                    keyboard2.getConfig()?.shouldOfferVoiceTyping = false
+                val cfg = keyboard2.getConfig()
+                if (cfg != null && cfg.voice_enabled && cfg.voice_mode == "builtin") {
+                    if (VoicePermissionGate.hasPermission(keyboard2)) {
+                        openVoicePane()
+                    } else {
+                        keyboard2.showSuggestionBarMessage(
+                            keyboard2.getString(R.string.voice_mic_denied)
+                        )
+                        fallbackToVoiceIme()
+                    }
+                } else {
+                    fallbackToVoiceIme()
                 }
             }
 
