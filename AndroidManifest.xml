@@ -6,9 +6,8 @@
 
   <!-- PRIVACY: No INTERNET permission - CleverKeys is fully offline, no data leaves your device -->
 
-  <!-- Optional: Voice input support (not required for core keyboard functionality) -->
-  <!-- Uncomment if you want voice typing: -->
-  <!-- <uses-permission android:name="android.permission.RECORD_AUDIO"/> -->
+  <!-- Voice input (Phase 1 offline): mic capture is processed on-device, no network -->
+  <uses-permission android:name="android.permission.RECORD_AUDIO"/>
 
   <!-- User dictionary access for word suggestions (system dictionary only) -->
   <uses-permission android:name="android.permission.READ_USER_DICTIONARY"/>
