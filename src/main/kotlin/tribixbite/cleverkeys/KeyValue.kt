@@ -44,6 +44,8 @@ class KeyValue private constructor(
         MINIMIZE_FAB,
         // gh #175 (2026-10-07): explicit dismiss, like the "∨" button in other keyboards.
         HIDE_KEYBOARD,
+        // Phase 1 voice (2026-10-24): appended per gh #175 rule, ordinals are persisted.
+        VOICE_TRANSCRIBE,
     }
 
     /**
@@ -634,6 +636,7 @@ class KeyValue private constructor(
             "capslock" -> eventKey(0xE012, Event.CAPS_LOCK, 0)
             "voice_typing" -> eventKey(0xE015, Event.SWITCH_VOICE_TYPING, FLAG_SMALLER_FONT)
             "voice_typing_chooser" -> eventKey(0xE015, Event.SWITCH_VOICE_TYPING_CHOOSER, FLAG_SMALLER_FONT)
+            "voice_transcribe" -> eventKey(0xE018, Event.VOICE_TRANSCRIBE, FLAG_SMALLER_FONT)
             "switch_gif" -> eventKey("GIF", Event.SWITCH_GIF, FLAG_SMALLER_FONT)
             // gh #175: collapse the keyboard to a thin bar / a floating button.
             "minimize_bar" -> eventKey("▁", Event.MINIMIZE_BAR, 0)
